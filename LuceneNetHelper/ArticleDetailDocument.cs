@@ -19,7 +19,7 @@ namespace LuceneNetHelper
 
         public ArticleDetailDocument()
         {
-
+            MyDBHelper.InitConnectionString();
         }
 
         /// <summary>

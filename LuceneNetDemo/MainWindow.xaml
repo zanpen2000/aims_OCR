@@ -21,6 +21,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="auto"/>
                 <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="auto"/>
             </Grid.ColumnDefinitions>
             <TextBox Text="{Binding SearchStr}" Grid.Column="0">
                 <TextBox.InputBindings>
@@ -28,7 +29,8 @@
                 </TextBox.InputBindings>
             </TextBox>
             <telerik:RadButton Content="Search/Index" Command="{Binding SearchIndexCommand}"  Grid.Column="1" IsDefault="True" />
-            <CheckBox IsChecked="{Binding ReCreateIndex,UpdateSourceTrigger=PropertyChanged}" Grid.Column="2"/>
+            <telerik:RadButton Content="WCF-Search" Command="{Binding SearchWcfCommand}"  Grid.Column="2" IsDefault="True" />
+            <CheckBox IsChecked="{Binding ReCreateIndex,UpdateSourceTrigger=PropertyChanged}" Grid.Column="3"/>
         </Grid>
         <telerik:RadGridView Grid.Row="2" IsReadOnly="True" x:Name="articleGrid"
                              ItemsSource="{Binding Articles}"                             

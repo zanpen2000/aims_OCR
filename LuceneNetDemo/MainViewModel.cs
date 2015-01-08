@@ -7,11 +7,12 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.ServiceModel;
 using System.Text;
 
 namespace LuceneNetDemo
 {
-    public class MainViewModel : INotifyPropertyChanged
+    public class MainViewModel : INotifyPropertyChanged, SearchContract.ISearchCallback
     {
         #region Propertys
 
@@ -95,8 +96,10 @@ namespace LuceneNetDemo
         public bool ReCreateIndex
         {
             get { return reCreateIndex; }
-            set { reCreateIndex = value;
-            OnPropertyChanged("ReCreateIndex");
+            set
+            {
+                reCreateIndex = value;
+                OnPropertyChanged("ReCreateIndex");
             }
         }
 
@@ -105,6 +108,7 @@ namespace LuceneNetDemo
 
 
         public EntityEventCommand SearchIndexCommand { get; set; }
+        public EntityEventCommand SearchWcfCommand { get; set; }
 
         public void OnPropertyChanged(string propertyName)
         {
@@ -115,12 +119,13 @@ namespace LuceneNetDemo
 
         public MainViewModel()
         {
-
-            string cstring = AppSettings.Get("ConnectionString");
-            DBHelper.MyDBHelper.InitConnectionString(cstring);
+            DBHelper.MyDBHelper.InitConnectionString();
             this.Title = "Lucene.Net Demo";
             SearchIndexCommand = new EntityEventCommand(_searchIndexCommand);
+            SearchWcfCommand = new EntityEventCommand(_searchWcfCommand);
         }
+
+
 
         private void _searchIndexCommand()
         {
@@ -138,16 +143,22 @@ namespace LuceneNetDemo
 
         void bw_DoWork(object sender, DoWorkEventArgs e)
         {
-            if (!Writter.IndexExists || ReCreateIndex)
+            bool recreate = false;
+
+            recreate = Writter.IndexExists ? ReCreateIndex : true;
+
+            if (Writter.IndexExists)
             {
-                var w = Writter.GetIndexWriter(true);
-                w.IndexCreateProgress += w_IndexCreateProgress;
-                int x = w.CreateIndex(new ArticleDetailDocument());
-                w.Optimize();
-                Writter.Close();
-                this.Title = this.Title.Split('-')[0] + " - " + x.ToString();
-                ReCreateIndex = false;
+                recreate = ReCreateIndex;
             }
+
+            var w = Writter.GetIndexWriter(recreate);
+            w.IndexCreateProgress += w_IndexCreateProgress;
+            int x = w.CreateIndex(new ArticleDetailDocument());
+            w.Optimize();
+            Writter.Close();
+            this.Title = this.Title.Split('-')[0] + " - " + x.ToString();
+            ReCreateIndex = false;
 
             if (string.IsNullOrEmpty(SearchStr))
                 return;
@@ -174,6 +185,55 @@ namespace LuceneNetDemo
         {
             ProgressValue = e.Percent;
             Progressing = e.Percent != 100;
+        }
+
+        public void ReturnSearchResult(IEnumerable<string> imageIds)
+        {
+            Title = " 结果数量: " + imageIds.Count().ToString();
+        }
+
+        public void ReturnReIndexResult(string msg)
+        {
+            //throw new NotImplementedException();
+            Title = msg;
+        }
+
+        private void _searchWcfCommand()
+        {
+            if (string.IsNullOrEmpty(SearchStr)) return;
+            System.Threading.Tasks.Task.Factory.StartNew(() =>
+            {
+                NetTcpBinding theBinding = __getTcpBinding();
+                InstanceContext context = new InstanceContext(this);
+                var channel = new DuplexChannelFactory<SearchContract.ITextSearch>(context, new NetTcpBinding(),
+                    new EndpointAddress("net.tcp://localhost:8006/TextSearch.svc")
+                    );
+                SearchContract.ITextSearch proxy = channel.CreateChannel();
+                proxy.Search(SearchStr);
+            });
+        }
+
+        private static NetTcpBinding __getTcpBinding()
+        {
+            NetTcpBinding theBinding = new NetTcpBinding();
+            theBinding.MaxReceivedMessageSize = int.MaxValue;
+            theBinding.MaxBufferSize = int.MaxValue;
+            theBinding.MaxBufferPoolSize = int.MaxValue;
+            theBinding.ReaderQuotas.MaxDepth = 32;
+            theBinding.ReaderQuotas.MaxStringContentLength = 2147483647;
+            theBinding.ReaderQuotas.MaxArrayLength = 2147483647;
+            theBinding.ReaderQuotas.MaxBytesPerRead = 4096;
+            theBinding.ReaderQuotas.MaxNameTableCharCount = 2147483647;
+            theBinding.Security.Mode = SecurityMode.None;
+            theBinding.TransferMode = TransferMode.Buffered;
+            theBinding.TransactionProtocol = TransactionProtocol.OleTransactions;
+            theBinding.HostNameComparisonMode = HostNameComparisonMode.StrongWildcard;
+            theBinding.MaxConnections = 10;
+            theBinding.TransactionFlow = false;
+            theBinding.CloseTimeout = TimeSpan.MaxValue;
+            theBinding.SendTimeout = TimeSpan.MaxValue;
+
+            return theBinding;
         }
     }
 }

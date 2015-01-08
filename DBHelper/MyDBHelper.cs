@@ -39,6 +39,29 @@ namespace DBHelper
             }
         }
 
+        public static void InitConnectionString()
+        {
+            ConnctionString = System.Configuration.ConfigurationManager.AppSettings["ConnectionString"];
+            if (string.IsNullOrEmpty(ConnctionString))
+            {
+                ConnctionString = System.Configuration.ConfigurationManager.ConnectionStrings["ConnectionString"].ConnectionString;
+            }
+            if (ConnctionString.IndexOf("Initial Catalog", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                DbType = MyDbType.SqlServer;
+                dbhelper = new SqlDBHelper(ConnctionString);
+            }
+            else if (ConnctionString.IndexOf("CONNECT_DATA", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                DbType = MyDbType.Oracle;
+                dbhelper = null;
+            }
+            else
+            {
+                dbhelper = null;
+            }
+        }
+
         public static SqlConnection GetConnection()
         {
             return dbhelper.getConnection();
