@@ -29,10 +29,10 @@ namespace LuceneNetHelper
         /// <returns></returns>
         public Documents GetDocuments(bool isCreate)
         {
-            var action = GetRecords(isCreate);
+            var allRecords = GetRecords(isCreate);
 
             Documents docs = new Documents();
-            foreach (var row in action)
+            foreach (var row in allRecords)
             {
                 Document doc = new Document();
 
